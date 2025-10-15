@@ -1,0 +1,41 @@
+{
+	"name": "@pipobscure/store",
+	"version": "0.0.0",
+	"description": "Data Storage Backend",
+	"type": "module",
+	"exports": "./dist/index.js",
+	"files": [
+		"dist/*.js",
+		"dist/*.d.ts"
+	],
+	"keywords": [
+		"Data",
+		"Storage"
+	],
+	"homepage": "https://github.com/pipobscure/store#readme",
+	"bugs": {
+		"url": "https://github.com/pipobscure/store/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pipobscure/store.git"
+	},
+	"license": "ISC",
+	"author": "Philipp Dunkel <pip@pipobscure.com>",
+	"scripts": {
+		"test": "node  --test '**/*.test.ts'",
+		"build": "tsc --build --verbose",
+		"format": "biome format --write",
+		"lint": "biome lint --write",
+		"prepublishOnly": "npm run build",
+		"postversion": "git push --follow-tags"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"@types/node": "^24.7.0",
+		"typescript": "^5.9.3"
+	},
+	"dependencies": {
+		"@pipobscure/s3": "^2.0.8"
+	}
+}
