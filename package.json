@@ -1,6 +1,6 @@
 {
 	"name": "@pipobscure/store",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Data Storage Backend",
 	"type": "module",
 	"exports": "./dist/index.js",
