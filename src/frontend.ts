@@ -1,14 +1,6 @@
 import * as CR from 'node:crypto';
 
-import {
-	type Backend,
-	type ContentId,
-	type ConflictToken,
-	type MimeType,
-	assertContentId,
-	isContentId,
-	isMimeType,
-} from './backend.ts';
+import { assertContentId, type Backend, type ConflictToken, type ContentId, isContentId, isMimeType, type MimeType } from './backend.ts';
 
 export type TagData = {
 	name: string;
@@ -41,21 +33,9 @@ export class Frontend {
 	async type(cid: ContentId, options?: { signal?: AbortSignal | undefined }) {
 		return await this.#back.type(cid, options?.signal);
 	}
-	async #text(
-		cid: ContentId,
-		cnt?: string,
-		type?: MimeType,
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async #text(cid: ContentId, cnt?: string, type?: MimeType, token?: ConflictToken, signal?: AbortSignal) {
 		if (cnt !== undefined) {
-			await this.#back.write(
-				cid,
-				Buffer.from(cnt),
-				type ?? 'text/plain',
-				token,
-				signal,
-			);
+			await this.#back.write(cid, Buffer.from(cnt), type ?? 'text/plain', token, signal);
 		}
 		const { content } = (await this.#back.read(cid, signal)) ?? {};
 		return content?.toString('utf-8') ?? null;
@@ -69,15 +49,7 @@ export class Frontend {
 	) {
 		const cid = hash(content);
 		const token = await this.#back.token(cid, options?.signal);
-		if (
-			await this.#back.write(
-				cid,
-				content,
-				options?.type ?? 'application/octet-stream',
-				token ?? undefined,
-				options?.signal,
-			)
-		) {
+		if (await this.#back.write(cid, content, options?.type ?? 'application/octet-stream', token ?? undefined, options?.signal)) {
 			return cid;
 		}
 		return null;
@@ -102,13 +74,7 @@ export class Frontend {
 					yield chunk;
 				}
 			};
-			await this.#back.writeStream(
-				tmpnam,
-				reader(),
-				options?.type ?? 'application/octet-stream',
-				undefined,
-				options?.signal,
-			);
+			await this.#back.writeStream(tmpnam, reader(), options?.type ?? 'application/octet-stream', undefined, options?.signal);
 			const cid = hash.digest('hex');
 			await this.#back.rename(tmpnam, cid);
 			return cid;
@@ -128,21 +94,9 @@ export class Frontend {
 	}
 	async tag(name: string, options?: { signal?: AbortSignal | undefined }) {
 		const nid = nameId(name);
-		const tid = await this.#text(
-			nid,
-			undefined,
-			undefined,
-			undefined,
-			options?.signal,
-		);
+		const tid = await this.#text(nid, undefined, undefined, undefined, options?.signal);
 		if (!tid) return null;
-		const txt = await this.#text(
-			tid,
-			undefined,
-			undefined,
-			undefined,
-			options?.signal,
-		);
+		const txt = await this.#text(tid, undefined, undefined, undefined, options?.signal);
 		if (!txt) return null;
 		const dat = JSON.parse(txt);
 		if (!dat) return null;
@@ -155,17 +109,7 @@ export class Frontend {
 			options?.signal?.throwIfAborted();
 			if (tag) assertTagData(tag);
 			yield tag;
-			tag = !tag.pre
-				? null
-				: JSON.parse(
-						(await this.#text(
-							tag.pre,
-							undefined,
-							undefined,
-							undefined,
-							options?.signal,
-						)) ?? 'null',
-					);
+			tag = !tag.pre ? null : JSON.parse((await this.#text(tag.pre, undefined, undefined, undefined, options?.signal)) ?? 'null');
 		}
 	}
 	async token(name: string, options?: { signal?: AbortSignal | undefined }) {
@@ -202,10 +146,7 @@ export class Frontend {
 			signal,
 		});
 		if (!tid) return false;
-		return (
-			null !==
-			(await this.#text(nid, tid, 'text/sha-512', token ?? undefined, signal))
-		);
+		return null !== (await this.#text(nid, tid, 'text/sha-512', token ?? undefined, signal));
 	}
 	async get(name: string, options?: { signal?: AbortSignal | undefined }) {
 		const tag = await this.tag(name, options);
@@ -222,10 +163,7 @@ export class Frontend {
 		if (!text) return null;
 		return JSON.parse(text);
 	}
-	async *readStream(
-		name: string,
-		options?: { signal?: AbortSignal | undefined },
-	) {
+	async *readStream(name: string, options?: { signal?: AbortSignal | undefined }) {
 		const tag = await this.tag(name);
 		if (!tag?.cid) return null;
 		yield* this.pullStream(tag.cid, options);
@@ -251,10 +189,7 @@ export class Frontend {
 			signal,
 		});
 		if (!tid) return false;
-		return (
-			null !==
-			(await this.#text(nid, tid, 'text/sha-512', token ?? undefined, signal))
-		);
+		return null !== (await this.#text(nid, tid, 'text/sha-512', token ?? undefined, signal));
 	}
 	async copy(
 		source: string,
@@ -265,10 +200,7 @@ export class Frontend {
 		},
 	) {
 		const nid = nameId(source);
-		const [pre, tag] = await Promise.all([
-			this.#text(nid, undefined, undefined, undefined, options?.signal),
-			this.tag(source),
-		]);
+		const [pre, tag] = await Promise.all([this.#text(nid, undefined, undefined, undefined, options?.signal), this.tag(source)]);
 		if (!pre || !tag) return false;
 		const tagdata = { ...tag, pre, name: target };
 		assertTagData(tagdata);
@@ -277,13 +209,7 @@ export class Frontend {
 			signal: options?.signal,
 		});
 		if (!ntid) return false;
-		const written = await this.#text(
-			nameId(target),
-			ntid,
-			'text/sha-512',
-			options?.token ?? undefined,
-			options?.signal,
-		);
+		const written = await this.#text(nameId(target), ntid, 'text/sha-512', options?.token ?? undefined, options?.signal);
 		return written === ntid;
 	}
 	async delete(
@@ -295,13 +221,7 @@ export class Frontend {
 	) {
 		const nid = nameId(name);
 		const tok = options?.token;
-		const pre = await this.#text(
-			nid,
-			undefined,
-			undefined,
-			undefined,
-			options?.signal,
-		);
+		const pre = await this.#text(nid, undefined, undefined, undefined, options?.signal);
 		if (!pre) return true;
 		const tagdata = {
 			cid: null,
@@ -316,13 +236,7 @@ export class Frontend {
 			signal: options?.signal,
 		});
 		if (!tid) return false;
-		const success = await this.#text(
-			nid,
-			tid,
-			'text/sha-512',
-			tok ?? undefined,
-			options?.signal,
-		);
+		const success = await this.#text(nid, tid, 'text/sha-512', tok ?? undefined, options?.signal);
 		return success === tid;
 	}
 }

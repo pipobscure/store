@@ -1,14 +1,8 @@
 import * as CR from 'node:crypto';
-
-import {
-	Backend,
-	type ContentId,
-	type ConflictToken,
-	type MimeType,
-} from './backend.ts';
 import { Transform } from 'node:stream';
+import { Backend, type ConflictToken, type ContentId, type MimeType } from './backend.ts';
 import { pipe } from './pipe.ts';
-import { ALGORITHM, encrypt, decrypt, randomBytes } from './secret.ts';
+import { ALGORITHM, decrypt, encrypt, randomBytes } from './secret.ts';
 
 export class Asymetric extends Backend {
 	#back;
@@ -34,8 +28,7 @@ export class Asymetric extends Backend {
 		return this.#back.hash(id, signal);
 	}
 	async read(id: ContentId, signal?: AbortSignal) {
-		const { content: encrypted, type } =
-			(await this.#back.read(id, signal)) ?? {};
+		const { content: encrypted, type } = (await this.#back.read(id, signal)) ?? {};
 		if (!encrypted || !type) return null;
 		const hdr = encrypted.subarray(0, 6);
 		if (hdr.subarray(0, 4).toString('ascii') !== 'AKE:') {
@@ -52,31 +45,15 @@ export class Asymetric extends Backend {
 			type,
 		};
 	}
-	async write(
-		id: ContentId,
-		content: Buffer<ArrayBufferLike>,
-		type: MimeType = 'application/octet-stream',
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async write(id: ContentId, content: Buffer<ArrayBufferLike>, type: MimeType = 'application/octet-stream', token?: ConflictToken, signal?: AbortSignal) {
 		const keydata = await randomBytes(48);
 		const hdr = Buffer.from('AKE:\0\0');
 		const enckey = CR.publicEncrypt(this.#key, keydata);
 		hdr.writeUInt16BE(enckey.length, 4);
 		const [data, authTag] = await encrypt(keydata, content);
-		return await this.#back.write(
-			id,
-			Buffer.concat([hdr, enckey, data, authTag]),
-			type,
-			token,
-			signal,
-		);
+		return await this.#back.write(id, Buffer.concat([hdr, enckey, data, authTag]), type, token, signal);
 	}
-	delete(
-		id: ContentId,
-		token: ConflictToken,
-		signal?: AbortSignal,
-	): Promise<boolean> {
+	delete(id: ContentId, token: ConflictToken, signal?: AbortSignal): Promise<boolean> {
 		return this.#back.delete(id, token, signal);
 	}
 	readStream(id: ContentId, signal?: AbortSignal) {
@@ -85,23 +62,11 @@ export class Asymetric extends Backend {
 		pipe(stream, decrypt, signal);
 		return decrypt;
 	}
-	async writeStream(
-		id: ContentId,
-		stream: AsyncIterable<Buffer>,
-		type?: MimeType,
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	): Promise<boolean> {
+	async writeStream(id: ContentId, stream: AsyncIterable<Buffer>, type?: MimeType, token?: ConflictToken, signal?: AbortSignal): Promise<boolean> {
 		try {
 			const encrypt = await encryptor(this.#key);
 			const done = pipe(stream, encrypt, signal);
-			const result = await this.#back.writeStream(
-				id,
-				encrypt,
-				type,
-				token,
-				signal,
-			);
+			const result = await this.#back.writeStream(id, encrypt, type, token, signal);
 			await done;
 			return result;
 		} catch {
@@ -140,12 +105,7 @@ function decryptor(key: CR.KeyObject) {
 					return callback();
 				}
 				const keydata = CR.privateDecrypt(key, chunk.subarray(6, 6 + encsize));
-				cipher = CR.createDecipheriv(
-					ALGORITHM,
-					keydata.subarray(0, 32),
-					keydata.subarray(32),
-					{ authTagLength: 16 },
-				);
+				cipher = CR.createDecipheriv(ALGORITHM, keydata.subarray(0, 32), keydata.subarray(32), { authTagLength: 16 });
 				chunk = chunk.subarray(6 + encsize);
 			}
 			if (cipher && chunk.length > 16) {
@@ -157,8 +117,7 @@ function decryptor(key: CR.KeyObject) {
 		},
 		final(callback) {
 			if (passmode) return callback();
-			if (!buffer || !cipher)
-				return callback(new Error('missing encryption information'));
+			if (!buffer || !cipher) return callback(new Error('missing encryption information'));
 			const authTag = buffer.subarray(-16);
 			buffer = buffer.subarray(0, -16);
 			this.push(cipher.update(buffer));
@@ -174,12 +133,7 @@ async function encryptor(key: CR.KeyObject) {
 	const keydata = await randomBytes(48);
 	const enckey = CR.publicEncrypt(key, keydata);
 	hdr.writeUInt16BE(enckey.length, 4);
-	const cipher = CR.createCipheriv(
-		ALGORITHM,
-		keydata.subarray(0, 32),
-		keydata.subarray(32, 48),
-		{ authTagLength: 16 },
-	);
+	const cipher = CR.createCipheriv(ALGORITHM, keydata.subarray(0, 32), keydata.subarray(32, 48), { authTagLength: 16 });
 	let hdrpushed = false;
 	const encryptor = new Transform({
 		transform(chunk, _encoding, callback) {

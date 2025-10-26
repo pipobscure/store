@@ -20,9 +20,9 @@ XnfIY7T5hcBT
 -----END PRIVATE KEY-----
 `);
 
-import define from './backend.ts';
-import { Memory } from '../memory.ts';
 import { Asymetric } from '../asymetric.ts';
+import { Memory } from '../memory.ts';
+import define from './backend.ts';
 
 describe('Encryption', () => {
 	define(new Asymetric(new Memory(), key));

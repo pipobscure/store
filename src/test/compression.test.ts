@@ -1,7 +1,7 @@
 import { describe } from 'node:test';
-import define from './backend.ts';
-import { Memory } from '../memory.ts';
 import { Compression } from '../compression.ts';
+import { Memory } from '../memory.ts';
+import define from './backend.ts';
 
 describe('Compression', () => {
 	define(new Compression(new Memory(), 'deflate'), 'deflate');

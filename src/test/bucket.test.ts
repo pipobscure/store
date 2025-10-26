@@ -1,9 +1,9 @@
-import { describe } from 'node:test';
-import define from './backend.ts';
-import { Bucket } from '../bucket.ts';
 import * as FS from 'node:fs/promises';
+import { describe } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import S3 from '@pipobscure/s3';
+import { Bucket } from '../bucket.ts';
+import define from './backend.ts';
 
 const prefix = `test-${process.pid}/`;
 const opts = await (async () => {

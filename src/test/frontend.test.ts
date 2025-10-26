@@ -1,16 +1,14 @@
-import { describe, it, after } from 'node:test';
 import * as Assert from 'node:assert/strict';
-import * as OS from 'node:os';
 import * as FS from 'node:fs/promises';
-
+import * as OS from 'node:os';
+import { after, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { S3 } from '@pipobscure/s3';
-
+import type { Backend, ConflictToken } from '../backend.ts';
+import { Bucket } from '../bucket.ts';
+import { Files } from '../files.ts';
 import { Frontend } from '../frontend.ts';
 import { Memory } from '../memory.ts';
-import type { Backend, ConflictToken } from '../backend.ts';
-import { Files } from '../files.ts';
-import { fileURLToPath } from 'node:url';
-import { Bucket } from '../bucket.ts';
 
 const prefix = `test-${process.pid}/`;
 const opts = await (async () => {
@@ -35,11 +33,7 @@ if (opts) {
 	});
 }
 
-function define(
-	name: string,
-	backend: Backend,
-	clean?: () => void | Promise<void>,
-) {
+function define(name: string, backend: Backend, clean?: () => void | Promise<void>) {
 	describe(`Frontend(${name})`, () => {
 		if (clean) after(clean);
 		const frontend = new Frontend(backend);
@@ -91,11 +85,7 @@ function define(
 				Assert.equal(exists, false);
 			});
 			it('can set named content', async () => {
-				const result = await frontend.set(
-					'my test data',
-					Buffer.from('test - data'),
-					{ type: 'text/plain' },
-				);
+				const result = await frontend.set('my test data', Buffer.from('test - data'), { type: 'text/plain' });
 				Assert.ok(result);
 			});
 			it('knows a tag now exists', async () => {
@@ -132,10 +122,7 @@ function define(
 				Assert.ok(stream?.[Symbol.asyncIterator]);
 				const data = await Array.fromAsync(stream);
 				Assert.ok(data.length);
-				Assert.equal(
-					Buffer.concat(data).toString('utf-8'),
-					'more data than before ',
-				);
+				Assert.equal(Buffer.concat(data).toString('utf-8'), 'more data than before ');
 			});
 			it('can copy content', async () => {
 				const result = await frontend.copy('my test data', 'my other name');

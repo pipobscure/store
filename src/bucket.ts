@@ -1,12 +1,5 @@
 import { S3, type S3Options } from '@pipobscure/s3';
-import {
-	Backend,
-	ConflictToken,
-	makePath,
-	type ContentId,
-	assertMimeType,
-	type MimeType,
-} from './backend.ts';
+import { assertMimeType, Backend, ConflictToken, type ContentId, type MimeType, makePath } from './backend.ts';
 
 export type BucketOptions = { prefix?: string } & S3Options;
 
@@ -16,18 +9,12 @@ export class Bucket extends Backend {
 	constructor(opts: BucketOptions) {
 		super();
 		const { prefix = '', ...options } = opts;
-		this.#prefix = [
-			...(prefix ?? '').split('/').filter((x) => !!x.trim()),
-			'',
-		].join('/');
+		this.#prefix = [...(prefix ?? '').split('/').filter((x) => !!x.trim()), ''].join('/');
 		this.#client = new S3(options);
 	}
 	async token(id: ContentId, signal?: AbortSignal) {
 		try {
-			const headers = await this.#client.head(
-				`${this.#prefix}${makePath(id)}`,
-				signal,
-			);
+			const headers = await this.#client.head(`${this.#prefix}${makePath(id)}`, signal);
 			if (!headers.etag) throw new Error('no token available');
 			return new ConflictToken(this, headers.etag);
 		} catch (e) {
@@ -53,10 +40,7 @@ export class Bucket extends Backend {
 	}
 	async type(id: ContentId, signal?: AbortSignal) {
 		try {
-			const hdr = await this.#client.head(
-				`${this.#prefix}${makePath(id)}`,
-				signal,
-			);
+			const hdr = await this.#client.head(`${this.#prefix}${makePath(id)}`, signal);
 			const type = hdr.type ?? 'application/octet-stream';
 			assertMimeType(type);
 			return type;
@@ -67,10 +51,7 @@ export class Bucket extends Backend {
 	}
 	async hash(id: ContentId, signal?: AbortSignal) {
 		try {
-			const hdr = await this.#client.head(
-				`${this.#prefix}${makePath(id)}`,
-				signal,
-			);
+			const hdr = await this.#client.head(`${this.#prefix}${makePath(id)}`, signal);
 			return hdr.etag ?? null;
 		} catch (e) {
 			if ((e as any).status === 404) return null;
@@ -99,13 +80,7 @@ export class Bucket extends Backend {
 			throw e;
 		}
 	}
-	async write(
-		id: ContentId,
-		content: Buffer<ArrayBufferLike>,
-		type: MimeType = 'application/octet-stream',
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async write(id: ContentId, content: Buffer<ArrayBufferLike>, type: MimeType = 'application/octet-stream', token?: ConflictToken, signal?: AbortSignal) {
 		const resource = `${this.#prefix}${makePath(id)}`;
 		try {
 			const etag = await this.#etag(resource, signal);
@@ -130,27 +105,12 @@ export class Bucket extends Backend {
 		}
 	}
 	readStream(id: ContentId, signal?: AbortSignal) {
-		const stream = this.#client.stream(
-			`${this.#prefix}${makePath(id)}`,
-			signal,
-		);
+		const stream = this.#client.stream(`${this.#prefix}${makePath(id)}`, signal);
 		return stream;
 	}
-	async writeStream(
-		id: ContentId,
-		stream: AsyncIterable<Buffer>,
-		type: MimeType = 'application/octet-stream',
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	): Promise<boolean> {
+	async writeStream(id: ContentId, stream: AsyncIterable<Buffer>, type: MimeType = 'application/octet-stream', token?: ConflictToken, signal?: AbortSignal): Promise<boolean> {
 		try {
-			const result = await this.#client.put(
-				`${this.#prefix}${makePath(id)}`,
-				stream,
-				type,
-				token?.value(this),
-				signal,
-			);
+			const result = await this.#client.put(`${this.#prefix}${makePath(id)}`, stream, type, token?.value(this), signal);
 			return !!result;
 		} catch (e) {
 			if ((e as any).status === 412 || (e as any).status === 409) return false;
@@ -167,10 +127,7 @@ export class Bucket extends Backend {
 		}
 	}
 	async rename(source: ContentId, target: ContentId, signal?: AbortSignal) {
-		const [sExists, tExists] = await Promise.all([
-			this.exists(source),
-			this.exists(target),
-		]);
+		const [sExists, tExists] = await Promise.all([this.exists(source), this.exists(target)]);
 		if (!sExists || tExists) return false;
 		const sName = `${this.#prefix}${makePath(source)}`;
 		const tName = `${this.#prefix}${makePath(target)}`;

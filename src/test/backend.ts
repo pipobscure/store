@@ -1,20 +1,14 @@
-import { describe, it, after } from 'node:test';
 import * as Assert from 'node:assert/strict';
 import * as CR from 'node:crypto';
+import { after, describe, it } from 'node:test';
 import { Backend, ConflictToken } from '../backend.ts';
 
 type Cleanup = () => void | Promise<void>;
-export default function (
-	backend: Backend,
-	tag?: string | Cleanup,
-	cleanup?: Cleanup,
-) {
+export default function (backend: Backend, tag?: string | Cleanup, cleanup?: Cleanup) {
 	cleanup = (cleanup ?? 'string' === typeof tag) ? cleanup : (tag ?? cleanup);
 	tag = 'string' === typeof tag ? tag : undefined;
 	describe(`Backend: ${backend.constructor.name}${tag ? `(${tag})` : ''}`, () => {
-		const id = CR.createHash('sha-512')
-			.update(CR.randomBytes(50))
-			.digest('hex');
+		const id = CR.createHash('sha-512').update(CR.randomBytes(50)).digest('hex');
 		const content = CR.randomBytes(20);
 		let token: ConflictToken | null = null;
 		if (cleanup) after(cleanup);
@@ -59,23 +53,11 @@ export default function (
 			Assert.ok((token = await backend.token(id)) instanceof ConflictToken);
 		});
 		it('can write with token', async () => {
-			const result = await backend.write(
-				id,
-				CR.randomBytes(20),
-				'byte/random',
-				token as ConflictToken,
-			);
+			const result = await backend.write(id, CR.randomBytes(20), 'byte/random', token as ConflictToken);
 			Assert.ok(result);
 		});
 		it('cannot write with wrong token', async () => {
-			Assert.ok(
-				!(await backend.write(
-					id,
-					CR.randomBytes(20),
-					'byte/random',
-					token as ConflictToken,
-				)),
-			);
+			Assert.ok(!(await backend.write(id, CR.randomBytes(20), 'byte/random', token as ConflictToken)));
 			token = await backend.token(id);
 		});
 		it('delete returns true', async () => {

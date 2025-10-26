@@ -1,11 +1,6 @@
 import * as CR from 'node:crypto';
-import {
-	Backend,
-	type ContentId,
-	type MimeType,
-	type ConflictToken,
-} from './backend.ts';
 import { Transform } from 'node:stream';
+import { Backend, type ConflictToken, type ContentId, type MimeType } from './backend.ts';
 import { pipe } from './pipe.ts';
 export const ALGORITHM = 'aes-256-gcm';
 
@@ -49,30 +44,14 @@ export class Secret extends Backend {
 			return null;
 		}
 	}
-	async write(
-		id: ContentId,
-		content: Buffer<ArrayBufferLike>,
-		type?: MimeType,
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async write(id: ContentId, content: Buffer<ArrayBufferLike>, type?: MimeType, token?: ConflictToken, signal?: AbortSignal) {
 		const keydata = await randomBytes(48);
 		const hdr = Buffer.from('SKE:');
 		const [enckey, keytag] = await encrypt(await this.#secret, keydata);
 		const [data, authTag] = await encrypt(keydata, content);
-		return await this.#back.write(
-			id,
-			Buffer.concat([hdr, enckey, keytag, data, authTag]),
-			type,
-			token,
-			signal,
-		);
+		return await this.#back.write(id, Buffer.concat([hdr, enckey, keytag, data, authTag]), type, token, signal);
 	}
-	delete(
-		id: ContentId,
-		token: ConflictToken,
-		signal?: AbortSignal,
-	): Promise<boolean> {
+	delete(id: ContentId, token: ConflictToken, signal?: AbortSignal): Promise<boolean> {
 		return this.#back.delete(id, token, signal);
 	}
 	readStream(id: ContentId, signal?: AbortSignal) {
@@ -81,13 +60,7 @@ export class Secret extends Backend {
 		pipe(stream, decrypt, signal);
 		return decrypt;
 	}
-	async writeStream(
-		id: ContentId,
-		stream: AsyncIterable<Buffer>,
-		type?: MimeType,
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async writeStream(id: ContentId, stream: AsyncIterable<Buffer>, type?: MimeType, token?: ConflictToken, signal?: AbortSignal) {
 		const encrypt = await encryptor(await this.#secret);
 		pipe(stream, encrypt, signal);
 		return await this.#back.writeStream(id, encrypt, type, token, signal);
@@ -114,24 +87,13 @@ export function randomBytes(size: number) {
 	return deferred.promise;
 }
 
-export async function encrypt(
-	keydata: Buffer<ArrayBufferLike>,
-	first: Buffer<ArrayBufferLike>,
-	...parts: Buffer<ArrayBufferLike>[]
-): Promise<[Buffer<ArrayBufferLike>, Buffer<ArrayBufferLike>]> {
+export async function encrypt(keydata: Buffer<ArrayBufferLike>, first: Buffer<ArrayBufferLike>, ...parts: Buffer<ArrayBufferLike>[]): Promise<[Buffer<ArrayBufferLike>, Buffer<ArrayBufferLike>]> {
 	const content = [first, ...parts];
 	const deferred = Promise.withResolvers<void>();
-	const cipher = CR.createCipheriv(
-		ALGORITHM,
-		keydata.subarray(0, 32),
-		keydata.subarray(32, 48),
-		{ authTagLength: 16 },
-	);
+	const cipher = CR.createCipheriv(ALGORITHM, keydata.subarray(0, 32), keydata.subarray(32, 48), { authTagLength: 16 });
 	cipher.on('error', deferred.reject);
 	cipher.on('end', deferred.resolve);
-	const result = Array.fromAsync(cipher).then((chunks) =>
-		Buffer.concat(chunks),
-	);
+	const result = Array.fromAsync(cipher).then((chunks) => Buffer.concat(chunks));
 	result.catch(deferred.reject);
 	for (const part of content) {
 		cipher.write(part);
@@ -140,26 +102,14 @@ export async function encrypt(
 	const [data] = await Promise.all([result, deferred.promise]);
 	return [data, cipher.getAuthTag()];
 }
-export async function decrypt(
-	keydata: Buffer<ArrayBufferLike>,
-	authTag: Buffer<ArrayBufferLike>,
-	first: Buffer<ArrayBufferLike>,
-	...parts: Buffer<ArrayBufferLike>[]
-) {
+export async function decrypt(keydata: Buffer<ArrayBufferLike>, authTag: Buffer<ArrayBufferLike>, first: Buffer<ArrayBufferLike>, ...parts: Buffer<ArrayBufferLike>[]) {
 	const content = [first, ...parts];
 	const deferred = Promise.withResolvers<void>();
-	const cipher = CR.createDecipheriv(
-		ALGORITHM,
-		keydata.subarray(0, 32),
-		keydata.subarray(32, 48),
-		{ authTagLength: 16 },
-	);
+	const cipher = CR.createDecipheriv(ALGORITHM, keydata.subarray(0, 32), keydata.subarray(32, 48), { authTagLength: 16 });
 	cipher.setAuthTag(authTag);
 	cipher.on('error', deferred.reject);
 	cipher.on('end', deferred.resolve);
-	const result = Array.fromAsync(cipher).then((chunks) =>
-		Buffer.concat(chunks),
-	);
+	const result = Array.fromAsync(cipher).then((chunks) => Buffer.concat(chunks));
 	result.catch(deferred.reject);
 	for (const part of content) {
 		cipher.write(part);
@@ -195,17 +145,8 @@ function decryptor(secret: Promise<Buffer<ArrayBufferLike>>) {
 						buffer = chunk;
 						return callback();
 					}
-					const keydata = await decrypt(
-						await secret,
-						chunk.subarray(52, 68),
-						chunk.subarray(4, 52),
-					);
-					cipher = CR.createDecipheriv(
-						ALGORITHM,
-						keydata.subarray(0, 32),
-						keydata.subarray(32),
-						{ authTagLength: 16 },
-					);
+					const keydata = await decrypt(await secret, chunk.subarray(52, 68), chunk.subarray(4, 52));
+					cipher = CR.createDecipheriv(ALGORITHM, keydata.subarray(0, 32), keydata.subarray(32), { authTagLength: 16 });
 					chunk = chunk.subarray(68);
 				}
 				if (cipher && chunk.length > 16) {
@@ -220,8 +161,7 @@ function decryptor(secret: Promise<Buffer<ArrayBufferLike>>) {
 		},
 		final(callback) {
 			if (passmode) return callback();
-			if (!buffer || !cipher)
-				return callback(new Error('missing encryption information'));
+			if (!buffer || !cipher) return callback(new Error('missing encryption information'));
 			const authTag = buffer.subarray(-16);
 			buffer = buffer.subarray(0, -16);
 			this.push(cipher.update(buffer));
@@ -236,12 +176,7 @@ async function encryptor(secret: Buffer<ArrayBufferLike>) {
 	const hdr = Buffer.from('SKE:');
 	const keydata = await randomBytes(48);
 	const [enckey, keytag] = await encrypt(secret, keydata);
-	const cipher = CR.createCipheriv(
-		ALGORITHM,
-		keydata.subarray(0, 32),
-		keydata.subarray(32, 48),
-		{ authTagLength: 16 },
-	);
+	const cipher = CR.createCipheriv(ALGORITHM, keydata.subarray(0, 32), keydata.subarray(32, 48), { authTagLength: 16 });
 	let hdrpushed = false;
 	const chunks: Buffer<ArrayBufferLike>[] = [];
 	const encryptor = new Transform({

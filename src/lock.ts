@@ -7,8 +7,7 @@ const KEY = Symbol();
 export class Lock {
 	#lockfile: string;
 	constructor(lockfile: string, key: symbol) {
-		if (key !== KEY)
-			throw new Error('locks are created with Lock.acquire() not new Lock()');
+		if (key !== KEY) throw new Error('locks are created with Lock.acquire() not new Lock()');
 		this.#lockfile = lockfile;
 	}
 	[Symbol.dispose]() {
@@ -30,10 +29,7 @@ export class Lock {
 		return `[Lock: ${PT.basename(this.#lockfile)}]`;
 	}
 	static #file(name: string) {
-		return PT.join(
-			OS.tmpdir(),
-			`${CR.createHash('sha-1').update(name).digest('hex')}.lock`,
-		);
+		return PT.join(OS.tmpdir(), `${CR.createHash('sha-1').update(name).digest('hex')}.lock`);
 	}
 	static async #create(lockfile: string) {
 		try {

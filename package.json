@@ -31,11 +31,11 @@
 		"postversion": "git push --follow-tags"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.6",
+		"@pipobscure/biome": "^1.1.2",
 		"@types/node": "^24.7.0",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@pipobscure/s3": "^2.0.8"
+		"@pipobscure/s3": "^2.0.11"
 	}
 }

@@ -1,10 +1,9 @@
+import { equal } from 'node:assert/strict';
 import * as CR from 'node:crypto';
 import { describe, it } from 'node:test';
-import { equal } from 'node:assert/strict';
-
-import define from './backend.ts';
 import { Memory } from '../memory.ts';
-import { Secret, encrypt, decrypt } from '../secret.ts';
+import { decrypt, encrypt, Secret } from '../secret.ts';
+import define from './backend.ts';
 
 describe('Encryption', () => {
 	const keydata = CR.randomBytes(48);
@@ -14,9 +13,5 @@ describe('Encryption', () => {
 		const rountrip = await decrypt(keydata, authTag, encrypted);
 		equal(rountrip.toString('hex'), original.toString('hex'));
 	});
-	define(new Secret(
-		new Memory(),
-		'mein test passwort',
-		'und etwas salz zum würzen',
-	));
+	define(new Secret(new Memory(), 'mein test passwort', 'und etwas salz zum würzen'));
 });

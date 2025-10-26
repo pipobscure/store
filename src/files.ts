@@ -1,19 +1,9 @@
-import * as PT from 'node:path';
-import * as FS from 'node:fs/promises';
 import * as CR from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-
+import * as FS from 'node:fs/promises';
+import * as PT from 'node:path';
+import { assertContentId, assertMimeType, Backend, ConflictToken, type ContentId, type MimeType, makePath } from './backend.ts';
 import { Lock } from './lock.ts';
-
-import {
-	type ContentId,
-	type MimeType,
-	assertContentId,
-	assertMimeType,
-	Backend,
-	ConflictToken,
-	makePath,
-} from './backend.ts';
 
 export class Files extends Backend {
 	#base;
@@ -73,10 +63,7 @@ export class Files extends Backend {
 	async read(id: ContentId) {
 		try {
 			const name = PT.join(this.#base, makePath(id));
-			const [content, datastr] = await Promise.all([
-				FS.readFile(name),
-				FS.readFile(`${name}.data`, 'utf-8'),
-			]);
+			const [content, datastr] = await Promise.all([FS.readFile(name), FS.readFile(`${name}.data`, 'utf-8')]);
 			const { type } = JSON.parse(datastr);
 			assertMimeType(type);
 			return { content, type };
@@ -85,23 +72,10 @@ export class Files extends Backend {
 			throw e;
 		}
 	}
-	async write(
-		id: ContentId,
-		content: Buffer<ArrayBufferLike>,
-		type: MimeType = 'application/octet-stream',
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async write(id: ContentId, content: Buffer<ArrayBufferLike>, type: MimeType = 'application/octet-stream', token?: ConflictToken, signal?: AbortSignal) {
 		const name = PT.join(this.#base, makePath(id));
 		await FS.mkdir(PT.dirname(name), { recursive: true });
-		await using lock = token
-			? await Lock.await(
-					name,
-					signal
-						? AbortSignal.any([AbortSignal.timeout(30000), signal])
-						: AbortSignal.timeout(30000),
-				)
-			: null;
+		await using lock = token ? await Lock.await(name, signal ? AbortSignal.any([AbortSignal.timeout(30000), signal]) : AbortSignal.timeout(30000)) : null;
 		const current = lock ? await this.hash(id) : null;
 		const hash = CR.createHash('sha-512').update(content).digest('hex');
 		if (current !== (token?.value(this) ?? null)) return false;
@@ -115,12 +89,7 @@ export class Files extends Backend {
 	}
 	async delete(id: ContentId, token: ConflictToken, signal?: AbortSignal) {
 		const name = PT.join(this.#base, makePath(id));
-		await using lock = await Lock.await(
-			name,
-			signal
-				? AbortSignal.any([AbortSignal.timeout(30000), signal])
-				: AbortSignal.timeout(30000),
-		);
+		await using lock = await Lock.await(name, signal ? AbortSignal.any([AbortSignal.timeout(30000), signal]) : AbortSignal.timeout(30000));
 		if (token.value(this) !== (await this.hash(id))) return false;
 		try {
 			await Promise.all([FS.unlink(name), FS.unlink(`${name}.data`)]);
@@ -136,17 +105,9 @@ export class Files extends Backend {
 		const stream = createReadStream(name);
 		return stream;
 	}
-	async writeStream(
-		id: ContentId,
-		stream: AsyncIterable<Buffer>,
-		type: MimeType = 'application/octet-stream',
-		token?: ConflictToken,
-		signal?: AbortSignal,
-	) {
+	async writeStream(id: ContentId, stream: AsyncIterable<Buffer>, type: MimeType = 'application/octet-stream', token?: ConflictToken, signal?: AbortSignal) {
 		const name = PT.join(this.#base, makePath(id));
-		await using lock = token
-			? await Lock.await(name, AbortSignal.timeout(30000))
-			: null;
+		await using lock = token ? await Lock.await(name, AbortSignal.timeout(30000)) : null;
 		const current = lock ? await this.hash(id) : null;
 		if (current !== (token?.value(this) ?? null)) return false;
 		signal?.throwIfAborted();
@@ -173,10 +134,7 @@ export class Files extends Backend {
 		return true;
 	}
 	async rename(source: ContentId, target: ContentId, signal?: AbortSignal) {
-		const [sExists, tExists] = await Promise.all([
-			this.exists(source),
-			this.exists(target),
-		]);
+		const [sExists, tExists] = await Promise.all([this.exists(source), this.exists(target)]);
 		signal?.throwIfAborted();
 		if (!sExists || tExists) return false;
 		const sourceName = PT.join(this.#base, makePath(source));

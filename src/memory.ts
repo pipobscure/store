@@ -1,17 +1,9 @@
 import * as CR from 'node:crypto';
 
-import {
-	Backend,
-	ConflictToken,
-	type ContentId,
-	type MimeType,
-} from './backend.ts';
+import { Backend, ConflictToken, type ContentId, type MimeType } from './backend.ts';
 
 export class Memory extends Backend {
-	#mem: Record<
-		ContentId,
-		{ type: MimeType; hash: ContentId; data: Buffer<ArrayBufferLike> }
-	> = {};
+	#mem: Record<ContentId, { type: MimeType; hash: ContentId; data: Buffer<ArrayBufferLike> }> = {};
 	constructor() {
 		super();
 	}
@@ -38,12 +30,7 @@ export class Memory extends Backend {
 		if (!data || !type) return null;
 		return { content: data, type };
 	}
-	async write(
-		id: ContentId,
-		content: Buffer<ArrayBufferLike>,
-		type: MimeType = 'application/octet-stream',
-		token?: ConflictToken,
-	) {
+	async write(id: ContentId, content: Buffer<ArrayBufferLike>, type: MimeType = 'application/octet-stream', token?: ConflictToken) {
 		if (token?.value(this) !== this.#mem[id]?.hash) return false;
 		if (!token && this.#mem[id]) return false;
 		const hash = CR.createHash('sha-512').update(content).digest('hex');
@@ -59,12 +46,7 @@ export class Memory extends Backend {
 		const { content } = (await this.read(id)) ?? {};
 		if (content) yield content;
 	}
-	async writeStream(
-		id: ContentId,
-		stream: AsyncIterable<Buffer>,
-		type?: MimeType,
-		token?: ConflictToken,
-	) {
+	async writeStream(id: ContentId, stream: AsyncIterable<Buffer>, type?: MimeType, token?: ConflictToken) {
 		const chunks = [];
 		let length = 0;
 		for await (const chunk of stream) {
@@ -74,10 +56,7 @@ export class Memory extends Backend {
 		return await this.write(id, Buffer.concat(chunks, length), type, token);
 	}
 	async rename(source: ContentId, target: ContentId, _signal?: AbortSignal) {
-		const [sExists, tExists] = await Promise.all([
-			this.exists(source),
-			this.exists(target),
-		]);
+		const [sExists, tExists] = await Promise.all([this.exists(source), this.exists(target)]);
 		if (!sExists || tExists) return false;
 		this.#mem[target] = this.#mem[source] as {
 			type: MimeType;

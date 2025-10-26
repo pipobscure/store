@@ -1,10 +1,6 @@
 import type { Writable } from 'node:stream';
 
-export async function pipe(
-	stream: AsyncIterable<Buffer>,
-	output: Writable,
-	signal?: AbortSignal,
-) {
+export async function pipe(stream: AsyncIterable<Buffer>, output: Writable, signal?: AbortSignal) {
 	try {
 		for await (const chunk of stream) {
 			signal?.throwIfAborted();
