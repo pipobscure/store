@@ -20,7 +20,7 @@
 		"type": "git",
 		"url": "git+https://github.com/pipobscure/store.git"
 	},
-	"license": "ISC",
+	"license": "EUPL-1.2",
 	"author": "Philipp Dunkel <pip@pipobscure.com>",
 	"scripts": {
 		"test": "node  --test '**/*.test.ts'",

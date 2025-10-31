@@ -192,3 +192,7 @@ Examples:
 |--------|------|--------------------|
 | **Frontend** | High-level interface for users; manages metadata, types, and IDs | Application developers |
 | **Backend** | Low-level persistence layer; defines how content is stored | Library or system developers |
+
+## License
+
+© 2025 Philipp Dunkel <pip@pipobscure.com> [EUPL v1.2](https://eupl.eu/1.2/en)
